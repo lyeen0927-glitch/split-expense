@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>注音抽籤機</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      background: linear-gradient(135deg, #1a0a2e 0%, #16213e 50%, #0f3460 100%);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      font-family: 'Noto Serif TC', serif; padding: 24px; position: relative; overflow: hidden;
+    }
+    .deco { position: absolute; border-radius: 50%; pointer-events: none; }
+    .deco1 { top:-80px; left:-80px; width:260px; height:260px; border:2px solid rgba(255,200,50,0.08); }
+    .deco2 { bottom:-60px; right:-60px; width:200px; height:200px; border:2px solid rgba(255,200,50,0.12); }
+    .deco3 { top:30%; right:-5%; width:120px; height:120px; border:1px solid rgba(255,200,50,0.07); }
+
+    .title-wrap { text-align: center; margin-bottom: 28px; }
+    .subtitle { color: #f5c842; font-size: 12px; letter-spacing: 6px; opacity: 0.7; margin-bottom: 6px; }
+    h1 { color: #fff; font-size: 26px; font-weight: 700; letter-spacing: 4px; }
+    .divider { width: 48px; height: 2px; background: linear-gradient(90deg, transparent, #f5c842, transparent); margin: 10px auto 0; }
+
+    .card {
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,200,50,0.2); border-radius: 24px;
+      padding: 28px 36px; backdrop-filter: blur(12px);
+      box-shadow: 0 8px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.07);
+      display: flex; flex-direction: column; align-items: center; gap: 22px;
+      width: 100%; max-width: 380px;
+    }
+
+    /* 說明文字 */
+    .desc {
+      font-size: 12px; color: rgba(255,255,255,0.4); letter-spacing: 1px;
+      text-align: center; line-height: 1.8;
+      background: rgba(255,255,255,0.03); border-radius: 10px;
+      padding: 10px 16px; border: 1px solid rgba(255,255,255,0.06);
+      width: 100%;
+    }
+    .desc span.s { color: rgba(245,200,66,0.8); }
+    .desc span.i { color: rgba(100,210,255,0.8); }
+
+    /* 注音池 */
+    .pool-section { width: 100%; }
+    .pool-label { color: rgba(255,255,255,0.3); font-size: 11px; letter-spacing: 3px; margin-bottom: 8px; text-align: center; }
+    .pool-grid { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; }
+    .pool-char {
+      width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center;
+      justify-content: center; font-size: 15px; font-weight: 700;
+      border: 1px solid; transition: all 0.2s;
+    }
+    .pool-char.shengmu {
+      color: rgba(245,200,66,0.75); background: rgba(245,200,66,0.07);
+      border-color: rgba(245,200,66,0.18);
+    }
+    .pool-char.jieyin {
+      color: rgba(100,210,255,0.85); background: rgba(100,210,255,0.07);
+      border-color: rgba(100,210,255,0.22);
+    }
+    .pool-char.highlight {
+      transform: scale(1.18);
+      box-shadow: 0 0 12px rgba(245,200,66,0.4);
+    }
+    .pool-char.jieyin.highlight {
+      box-shadow: 0 0 12px rgba(100,210,255,0.4);
+    }
+
+    /* 結果 */
+    .pair { display: flex; gap: 20px; align-items: center; }
+    .char-box {
+      width: 108px; height: 108px; border-radius: 20px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      font-weight: 700; transition: all 0.15s; gap: 5px;
+      position: relative; overflow: hidden;
+    }
+    .char-box.shengmu-box {
+      background: linear-gradient(135deg, rgba(245,200,66,0.18), rgba(245,200,66,0.04));
+      border: 2px solid rgba(245,200,66,0.6);
+      box-shadow: 0 0 28px rgba(245,200,66,0.12);
+    }
+    .char-box.jieyin-box {
+      background: linear-gradient(135deg, rgba(100,210,255,0.18), rgba(100,210,255,0.04));
+      border: 2px solid rgba(100,210,255,0.6);
+      box-shadow: 0 0 28px rgba(100,210,255,0.12);
+    }
+    .char-box.spinning {
+      background: rgba(255,255,255,0.04) !important;
+      border-color: rgba(255,255,255,0.15) !important;
+      box-shadow: none !important;
+    }
+    .char-main { font-size: 52px; line-height: 1; }
+    .char-tag {
+      font-size: 11px; letter-spacing: 1px; padding: 2px 9px; border-radius: 8px;
+    }
+    .shengmu-box .char-main { color: #f5c842; }
+    .shengmu-box .char-tag { color: rgba(245,200,66,0.7); background: rgba(245,200,66,0.1); }
+    .jieyin-box .char-main { color: #64d2ff; }
+    .jieyin-box .char-tag { color: rgba(100,210,255,0.7); background: rgba(100,210,255,0.1); }
+    .char-box.spinning .char-main { color: rgba(255,255,255,0.35) !important; }
+    .char-box.spinning .char-tag { color: rgba(255,255,255,0.2) !important; background: transparent !important; }
+
+    .char-box.pop { animation: pop 0.35s cubic-bezier(.36,.07,.19,.97); }
+    @keyframes pop { 0%{transform:scale(0.82)} 55%{transform:scale(1.1)} 100%{transform:scale(1)} }
+
+    .hint { color: rgba(255,255,255,0.3); font-size: 12px; letter-spacing: 2px; }
+
+    .draw-btn {
+      background: linear-gradient(135deg, #f5c842, #e8a500); border: none; border-radius: 50px;
+      padding: 14px 48px; font-size: 17px; font-weight: 700; color: #1a0a2e; cursor: pointer;
+      letter-spacing: 4px; font-family: 'Noto Serif TC', serif;
+      box-shadow: 0 4px 24px rgba(245,200,66,0.35); transition: all 0.2s;
+    }
+    .draw-btn:hover:not(:disabled) { transform: scale(1.05); box-shadow: 0 6px 32px rgba(245,200,66,0.5); }
+    .draw-btn:disabled { background: rgba(245,200,66,0.25); color: rgba(255,255,255,0.4); cursor: not-allowed; transform: scale(0.97); box-shadow: none; }
+
+    /* 圖例 */
+    .legend { display: flex; gap: 16px; justify-content: center; }
+    .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; letter-spacing: 1px; }
+    .legend-dot { width: 9px; height: 9px; border-radius: 50%; }
+    .legend-dot.s { background: #f5c842; }
+    .legend-dot.i { background: #64d2ff; }
+
+    .history-wrap { margin-top: 20px; text-align: center; display: none; width: 100%; max-width: 380px; }
+    .history-label { color: rgba(255,255,255,0.3); font-size: 11px; letter-spacing: 4px; margin-bottom: 10px; }
+    .history-list { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+    .history-item {
+      background: rgba(245,200,66,0.07); border: 1px solid rgba(245,200,66,0.18);
+      border-radius: 10px; padding: 4px 13px; color: rgba(245,200,66,0.65); font-size: 17px; letter-spacing: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="deco deco1"></div>
+  <div class="deco deco2"></div>
+  <div class="deco deco3"></div>
+
+  <div class="title-wrap">
+    <div class="subtitle">團康遊戲工具</div>
+    <h1>注音抽籤機</h1>
+    <div class="divider"></div>
+  </div>
+
+  <div class="card">
+
+    <div class="desc">
+      抽取範圍：<span class="s">聲母 21 個</span>＋<span class="i">介音 3 個</span>，共 24 個<br>
+      符合中文詞語字首發音，排除純韻母
+    </div>
+
+    <!-- 注音池展示 -->
+    <div class="pool-section">
+      <div class="pool-label">抽取池</div>
+      <div class="pool-grid" id="poolGrid"></div>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot s"></div><span style="color:rgba(245,200,66,0.7)">聲母（21）</span></div>
+      <div class="legend-item"><div class="legend-dot i"></div><span style="color:rgba(100,210,255,0.7)">介音（3）</span></div>
+    </div>
+
+    <!-- 抽籤結果 -->
+    <div class="pair">
+      <div class="char-box shengmu-box" id="box1">
+        <div class="char-main" id="char1">ㄅ</div>
+        <div class="char-tag" id="tag1">聲母</div>
+      </div>
+      <div class="char-box shengmu-box" id="box2">
+        <div class="char-main" id="char2">ㄆ</div>
+        <div class="char-tag" id="tag2">聲母</div>
+      </div>
+    </div>
+
+    <div class="hint" id="hint">點擊按鈕抽取注音字首</div>
+    <button class="draw-btn" id="btn" onclick="draw()">🎲 抽　籤</button>
+  </div>
+
+  <div class="history-wrap" id="historyWrap">
+    <div class="history-label">歷史紀錄</div>
+    <div class="history-list" id="historyList"></div>
+  </div>
+
+  <script>
+    const POOL = [
+      {c:'ㄅ',t:'聲母',k:'shengmu'},{c:'ㄆ',t:'聲母',k:'shengmu'},{c:'ㄇ',t:'聲母',k:'shengmu'},{c:'ㄈ',t:'聲母',k:'shengmu'},
+      {c:'ㄉ',t:'聲母',k:'shengmu'},{c:'ㄊ',t:'聲母',k:'shengmu'},{c:'ㄋ',t:'聲母',k:'shengmu'},{c:'ㄌ',t:'聲母',k:'shengmu'},
+      {c:'ㄍ',t:'聲母',k:'shengmu'},{c:'ㄎ',t:'聲母',k:'shengmu'},{c:'ㄏ',t:'聲母',k:'shengmu'},
+      {c:'ㄐ',t:'聲母',k:'shengmu'},{c:'ㄑ',t:'聲母',k:'shengmu'},{c:'ㄒ',t:'聲母',k:'shengmu'},
+      {c:'ㄓ',t:'聲母',k:'shengmu'},{c:'ㄔ',t:'聲母',k:'shengmu'},{c:'ㄕ',t:'聲母',k:'shengmu'},{c:'ㄖ',t:'聲母',k:'shengmu'},
+      {c:'ㄗ',t:'聲母',k:'shengmu'},{c:'ㄘ',t:'聲母',k:'shengmu'},{c:'ㄙ',t:'聲母',k:'shengmu'},
+      {c:'ㄧ',t:'介音',k:'jieyin'},{c:'ㄨ',t:'介音',k:'jieyin'},{c:'ㄩ',t:'介音',k:'jieyin'}
+    ];
+
+    let history = [], spinning = false;
+
+    // 渲染抽取池
+    function renderPool(highlightChars) {
+      document.getElementById('poolGrid').innerHTML = POOL.map(p => {
+        const hl = highlightChars && highlightChars.includes(p.c) ? ' highlight' : '';
+        return `<div class="pool-char ${p.k}${hl}" title="${p.t}">${p.c}</div>`;
+      }).join('');
+    }
+
+    function pick() {
+      return POOL[Math.floor(Math.random() * POOL.length)];
+    }
+
+    function setBox(id, charId, tagId, item, spinning) {
+      const box = document.getElementById(id);
+      box.classList.toggle('spinning', spinning);
+      if (!spinning) {
+        box.className = 'char-box ' + item.k + '-box';
+      }
+      document.getElementById(charId).textContent = item.c;
+      document.getElementById(tagId).textContent = item.t;
+    }
+
+    function draw() {
+      if (spinning) return;
+      spinning = true;
+      const btn = document.getElementById('btn');
+      const hint = document.getElementById('hint');
+
+      document.getElementById('box1').classList.add('spinning');
+      document.getElementById('box2').classList.add('spinning');
+      btn.disabled = true;
+      hint.textContent = '抽取中...';
+      renderPool(null);
+
+      let count = 0;
+      const interval = setInterval(() => {
+        const a = pick(), b = pick();
+        document.getElementById('char1').textContent = a.c;
+        document.getElementById('char2').textContent = b.c;
+        count++;
+
+        if (count > 16) {
+          clearInterval(interval);
+          const fa = pick(), fb = pick();
+
+          // 更新 box 樣式與文字
+          const box1 = document.getElementById('box1');
+          const box2 = document.getElementById('box2');
+          box1.className = 'char-box ' + fa.k + '-box';
+          box2.className = 'char-box ' + fb.k + '-box';
+          document.getElementById('char1').textContent = fa.c;
+          document.getElementById('tag1').textContent = fa.t;
+          document.getElementById('char2').textContent = fb.c;
+          document.getElementById('tag2').textContent = fb.t;
+
+          // 動畫
+          void box1.offsetWidth; void box2.offsetWidth;
+          box1.classList.add('pop'); box2.classList.add('pop');
+          setTimeout(() => { box1.classList.remove('pop'); box2.classList.remove('pop'); }, 400);
+
+          // 高亮抽取池
+          renderPool([fa.c, fb.c]);
+
+          btn.disabled = false;
+          hint.textContent = '點擊按鈕抽取注音字首';
+          spinning = false;
+
+          history.unshift(fa.c + ' ' + fb.c);
+          if (history.length > 8) history.pop();
+          const wrap = document.getElementById('historyWrap');
+          document.getElementById('historyList').innerHTML =
+            history.map(h => `<div class="history-item">${h}</div>`).join('');
+          wrap.style.display = 'block';
+        }
+      }, 55);
+    }
+
+    renderPool(null);
+  </script>
+</body>
+</html>
