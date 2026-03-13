@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>楊梅包棟分帳系統</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0d0f14;--surface:#161923;--surface2:#1e2330;--border:#2a3145;
+  --accent:#f5a623;--accent2:#e8764a;--green:#4ade80;--red:#f87171;
+  --text:#e8ecf4;--text2:#8b95aa;--text3:#5a6478;--radius:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;
+  background-image:radial-gradient(ellipse at 15% 15%,rgba(245,166,35,.07) 0%,transparent 50%),
+  radial-gradient(ellipse at 85% 85%,rgba(232,118,74,.05) 0%,transparent 50%);
+  -webkit-text-size-adjust:100%;}
+header{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;
+  position:sticky;top:0;background:#0d0f14;z-index:100;}
+.logo{font-size:24px;flex-shrink:0;}
+header h1{font-size:16px;font-weight:700;white-space:nowrap;}
+header p{font-size:11px;color:var(--text3);margin-top:1px;white-space:nowrap;}
+.conn-dot{width:8px;height:8px;border-radius:50%;background:var(--text3);margin-left:auto;flex-shrink:0;transition:background .3s;}
+.conn-dot.ok{background:var(--green);}
+.conn-dot.err{background:var(--red);}
+.conn-label{font-size:11px;color:var(--text3);margin-left:4px;flex-shrink:0;}
+
+.stats-bar{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid var(--border);background:var(--surface);}
+.stat{padding:10px 8px;text-align:center;border-right:1px solid var(--border);}
+.stat:last-child{border-right:none;}
+.stat-val{font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:var(--accent);}
+.stat-lbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-top:2px;}
+
+.tabs{display:flex;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:57px;z-index:90;}
+.tab{flex:1;padding:12px 4px;text-align:center;font-size:12px;font-weight:500;color:var(--text3);
+  cursor:pointer;border-bottom:2.5px solid transparent;transition:color .2s,border-color .2s;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;-webkit-tap-highlight-color:transparent;}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+
+.page{display:none;max-width:720px;margin:0 auto;padding:16px 12px;}
+.page.active{display:block;}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:16px;}
+.card-header{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.card-header h2{font-size:14px;font-weight:600;}
+.badge{margin-left:auto;background:var(--surface2);border:1px solid var(--border);
+  border-radius:20px;padding:2px 10px;font-size:12px;color:var(--text2);}
+.card-body{padding:16px;}
+
+.setup-card{background:rgba(96,165,250,.06);border:1px solid rgba(96,165,250,.25);
+  border-radius:var(--radius);padding:16px;margin-bottom:16px;}
+.setup-card h3{font-size:14px;font-weight:700;color:#60a5fa;margin-bottom:12px;}
+.setup-card p{font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:10px;}
+.setup-card code{background:var(--surface2);padding:2px 6px;border-radius:4px;font-size:12px;color:var(--accent2);}
+.setup-input{display:flex;gap:8px;margin-top:12px;}
+.setup-input input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+  color:var(--text);padding:10px 14px;font-size:13px;font-family:'Noto Sans TC',sans-serif;outline:none;}
+.setup-input input:focus{border-color:#60a5fa;}
+.setup-input button{background:#60a5fa;color:#0d0f14;border:none;border-radius:8px;
+  padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Noto Sans TC',sans-serif;white-space:nowrap;}
+
+.sync-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--green);
+  background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.2);border-radius:20px;
+  padding:3px 10px;margin-left:auto;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.sync-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 1.5s infinite;}
+
+.form-group{margin-bottom:16px;}
+label{display:block;font-size:11px;font-weight:600;color:var(--text3);
+  text-transform:uppercase;letter-spacing:.8px;margin-bottom:7px;}
+select,input[type=text],input[type=number]{
+  width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+  color:var(--text);padding:11px 14px;font-size:14px;font-family:'Noto Sans TC',sans-serif;
+  outline:none;transition:border-color .2s,box-shadow .2s;}
+select:focus,input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(245,166,35,.12);}
+select option{background:var(--surface2);}
+
+.chip-actions{display:flex;gap:12px;margin-bottom:10px;}
+.chip-btn{font-size:12px;color:var(--accent);background:none;border:none;cursor:pointer;
+  font-family:'Noto Sans TC',sans-serif;opacity:.8;transition:opacity .15s;padding:0;}
+.chip-btn:hover{opacity:1;}
+
+.members-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px;}
+@media(max-width:400px){.members-grid{grid-template-columns:repeat(3,1fr);}}
+.member-chip{background:var(--surface2);border:1.5px solid var(--border);border-radius:8px;
+  padding:8px 2px;text-align:center;cursor:pointer;transition:all .18s;user-select:none;
+  font-size:10px;color:var(--text2);line-height:1.3;-webkit-tap-highlight-color:transparent;}
+.member-chip .av{width:28px;height:28px;border-radius:50%;margin:0 auto 4px;
+  display:flex;align-items:center;justify-content:center;font-size:13px;
+  background:var(--surface);border:2px solid var(--border);transition:all .18s;}
+.member-chip.selected{border-color:var(--accent);background:rgba(245,166,35,.08);color:var(--text);}
+.member-chip.selected .av{background:linear-gradient(135deg,var(--accent),var(--accent2));border-color:transparent;}
+
+.split-preview{background:var(--surface2);border-radius:8px;padding:10px 14px;
+  font-size:13px;color:var(--text2);margin-bottom:16px;}
+.split-preview span{color:var(--accent);font-weight:600;}
+
+.btn-primary{width:100%;background:linear-gradient(135deg,var(--accent),var(--accent2));
+  color:#0d0f14;border:none;border-radius:8px;padding:13px;font-size:15px;font-weight:700;
+  cursor:pointer;font-family:'Noto Sans TC',sans-serif;transition:opacity .2s,transform .15s;letter-spacing:.5px;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation;}
+.btn-primary:hover{opacity:.9;transform:translateY(-1px);}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+
+.records-list{max-height:60vh;overflow-y:auto;}
+.records-list::-webkit-scrollbar{width:4px;}
+.records-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+
+.record-item{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;
+  align-items:flex-start;gap:10px;transition:background .15s;animation:slideIn .25s ease;}
+@keyframes slideIn{from{opacity:0;transform:translateX(-6px)}to{opacity:1;transform:translateX(0)}}
+.record-item:hover{background:rgba(255,255,255,.02);}
+.rec-av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:15px;flex-shrink:0;background:linear-gradient(135deg,#667eea,#764ba2);}
+.rec-info{flex:1;min-width:0;}
+.rec-title{font-size:14px;font-weight:500;margin-bottom:3px;}
+.rec-meta{font-size:12px;color:var(--text3);}
+.rec-amount{font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700;color:var(--accent);flex-shrink:0;}
+.rec-del{background:none;border:none;color:var(--text3);cursor:pointer;font-size:15px;
+  padding:4px;border-radius:4px;transition:color .15s,background .15s;flex-shrink:0;align-self:center;}
+.rec-del:hover{color:var(--red);background:rgba(248,113,113,.1);}
+
+.empty-state{padding:48px 24px;text-align:center;color:var(--text3);font-size:14px;}
+.empty-state .icon{font-size:36px;margin-bottom:12px;}
+.loading{padding:24px;text-align:center;color:var(--text3);font-size:13px;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner{display:inline-block;width:18px;height:18px;border:2px solid var(--border);
+  border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:8px;}
+
+.settle-btn{width:100%;background:rgba(74,222,128,.1);color:var(--green);
+  border:1.5px solid rgba(74,222,128,.3);border-radius:8px;padding:13px;font-size:15px;
+  font-weight:700;cursor:pointer;font-family:'Noto Sans TC',sans-serif;transition:all .2s;
+  display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:20px;}
+.settle-btn:hover{background:rgba(74,222,128,.2);border-color:var(--green);}
+
+.settle-person{background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);margin-bottom:12px;overflow:hidden;}
+.settle-head{padding:12px 14px;display:flex;align-items:center;gap:10px;
+  background:var(--surface2);border-bottom:1px solid var(--border);}
+.settle-name{font-weight:600;font-size:15px;flex:1;}
+.dir-recv{font-size:12px;color:var(--green);}
+.dir-pay{font-size:12px;color:var(--red);}
+.dir-even{font-size:12px;color:var(--green);}
+.settle-txn-row{padding:11px 14px;display:flex;align-items:center;
+  border-bottom:1px solid var(--border);font-size:14px;}
+.settle-txn-row:last-child{border-bottom:none;}
+.settle-txn-name{flex:1;color:var(--text2);}
+.txn-amt-recv{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px;color:var(--green);}
+.txn-amt-pay{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px;color:var(--accent);}
+.settle-tag{font-size:11px;padding:2px 8px;border-radius:4px;font-weight:600;margin-left:8px;}
+.tag-recv{background:rgba(74,222,128,.12);color:var(--green);}
+.tag-pay{background:rgba(245,166,35,.12);color:var(--accent);}
+.settle-footer{padding:10px 20px;text-align:right;font-size:13px;color:var(--text3);
+  background:var(--surface2);border-top:1px solid var(--border);}
+.settle-footer b{font-family:'Space Grotesk',sans-serif;font-weight:700;}
+
+.btn-reset{width:100%;background:none;border:1.5px solid rgba(248,113,113,.3);
+  color:var(--red);border-radius:8px;padding:11px;font-size:13px;font-weight:600;
+  cursor:pointer;font-family:'Noto Sans TC',sans-serif;transition:all .2s;margin-top:8px;}
+.btn-reset:hover{background:rgba(248,113,113,.1);border-color:var(--red);}
+
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);
+  background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  padding:12px 20px;font-size:13px;color:var(--text);box-shadow:0 8px 32px rgba(0,0,0,.4);
+  transition:transform .3s;z-index:999;white-space:nowrap;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🏠</div>
+  <div>
+    <h1>楊梅包棟分帳系統</h1>
+    <p>Firebase 即時同步版 · 12 人同行</p>
+  </div>
+  <div id="conn-dot" class="conn-dot" title="連線狀態"></div>
+  <span class="conn-label" id="conn-label">未連線</span>
+</header>
+
+<div class="stats-bar">
+  <div class="stat"><div class="stat-val" id="stat-total">NT$0</div><div class="stat-lbl">總花費</div></div>
+  <div class="stat"><div class="stat-val" id="stat-count">0</div><div class="stat-lbl">筆數</div></div>
+  <div class="stat"><div class="stat-val" id="stat-avg">NT$0</div><div class="stat-lbl">平均每人</div></div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('add')">➕ 新增費用</div>
+  <div class="tab" onclick="switchTab('records')">📋 費用記錄</div>
+  <div class="tab" onclick="switchTab('settle')">💰 分帳結果</div>
+</div>
+
+<!-- TAB 新增費用 -->
+<div class="page active" id="tab-add">
+
+  <div class="setup-card" id="setup-card">
+    <h3>🔥 第一步：設定 Firebase 資料庫網址</h3>
+    <p>請先完成以下設定，再開始使用：</p>
+    <p>
+      1. 前往 <a href="https://console.firebase.google.com" target="_blank" style="color:#60a5fa">Firebase Console</a> → 建立新專案<br>
+      2. 左側點「Realtime Database」→「建立資料庫」→ 選<code>測試模式</code><br>
+      3. 複製資料庫網址（格式：<code>https://你的專案-default-rtdb.firebaseio.com</code>）<br>
+      4. 貼到下方後儲存，即可開始使用（所有人即時同步）
+    </p>
+    <div class="setup-input">
+      <input type="text" id="fb-url-input" placeholder="https://你的專案-default-rtdb.firebaseio.com">
+      <button onclick="saveFirebaseUrl()">儲存</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h2>新增一筆費用</h2>
+      <span class="sync-badge" id="sync-badge" style="display:none"><span class="sync-dot"></span>即時同步中</span>
+    </div>
+    <div class="card-body">
+      <div class="form-group">
+        <label>付款人員</label>
+        <select id="payer"><option value="">— 請選擇付款人 —</option></select>
+      </div>
+      <div class="form-group">
+        <label>品項名稱</label>
+        <input type="text" id="item-name" placeholder="例：午餐、景點門票、全聯採買…">
+      </div>
+      <div class="form-group">
+        <label>金額（NT$）</label>
+        <input type="number" id="amount" placeholder="0" min="0" step="1">
+      </div>
+      <div class="form-group">
+        <label>分擔人員</label>
+        <div class="chip-actions">
+          <button class="chip-btn" onclick="selectAll()">✓ 全選</button>
+          <button class="chip-btn" onclick="clearAll()">✕ 清除</button>
+        </div>
+        <div class="members-grid" id="members-grid"></div>
+      </div>
+      <div class="split-preview" id="split-preview">選擇分擔人員後，將顯示每人應付金額</div>
+      <button class="btn-primary" id="submit-btn" onclick="addRecord()">💾 存入記錄</button>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 費用記錄 -->
+<div class="page" id="tab-records">
+  <div class="card">
+    <div class="card-header">
+      <h2>費用記錄</h2>
+      <span class="badge" id="record-badge">0 筆</span>
+      <span class="sync-badge" id="sync-badge2" style="display:none;margin-left:8px"><span class="sync-dot"></span>即時同步</span>
+    </div>
+    <div class="records-list" id="records-list">
+      <div class="empty-state"><div class="icon">🧾</div>尚無記錄，請先新增費用</div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 分帳結果 -->
+<div class="page" id="tab-settle">
+  <button class="settle-btn" onclick="renderSettle()">🔄 計算 / 重新整理</button>
+  <div id="settle-content"></div>
+  <button class="btn-reset" onclick="resetAll()">🗑️ 清除所有記錄，重新開始</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════
+//  🔥 Firebase Realtime Database REST API
+//  不需要 SDK，直接用 fetch 呼叫
+// ════════════════════════════════════════════
+const FB_KEY = 'firebase_db_url';
+let FB_URL = localStorage.getItem(FB_KEY) || '';
+let records = [];
+let selected = new Set();
+let unsubscribe = null;
+
+const MEMBERS = [
+  { id:1,  name:'采玲 Grace',   emoji:'🎁' },
+  { id:2,  name:'Carson',       emoji:'🧑' },
+  { id:3,  name:'chun',         emoji:'🌿' },
+  { id:4,  name:'DorisWang',    emoji:'👩' },
+  { id:5,  name:'Heather Wu',   emoji:'🌊' },
+  { id:6,  name:'Jenny',        emoji:'🌸' },
+  { id:7,  name:'WeiShao Hu',   emoji:'👨' },
+  { id:8,  name:'Ashley',       emoji:'🌺' },
+  { id:9,  name:'林家宏',       emoji:'🏔️' },
+  { id:10, name:'洪奕鎮',       emoji:'🎨' },
+  { id:11, name:'王乃皜', emoji:'🍀' },
+  { id:12, name:'許迦智',       emoji:'🦁' },
+];
+
+function init(){
+  MEMBERS.forEach(m=>selected.add(m.id));
+  const sel=document.getElementById('payer');
+  MEMBERS.forEach(m=>{ const o=document.createElement('option'); o.value=m.id; o.textContent=`${m.emoji} ${m.name}`; sel.appendChild(o); });
+  renderMembersGrid();
+  updatePreview();
+  document.getElementById('amount').addEventListener('input', updatePreview);
+  if(FB_URL){ document.getElementById('setup-card').style.display='none'; startRealtimeSync(); }
+}
+
+function saveFirebaseUrl(){
+  const v=document.getElementById('fb-url-input').value.trim().replace(/\/$/,'');
+  if(!v||!v.startsWith('https://')){ toast('請輸入正確的 Firebase 網址'); return; }
+  FB_URL=v; localStorage.setItem(FB_KEY,v);
+  document.getElementById('setup-card').style.display='none';
+  startRealtimeSync(); toast('✅ 已連線 Firebase，即時同步啟動！');
+}
+
+// ── Firebase REST API ──
+function dbUrl(path=''){ return `${FB_URL}/expenses${path}.json`; }
+
+async function fbGet(){
+  const r = await fetch(dbUrl());
+  if(!r.ok){ const t=await r.text(); throw new Error(`HTTP ${r.status}: ${t}`); }
+  return r.json();
+}
+async function fbPost(rec){
+  const r = await fetch(dbUrl(), {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(rec)
+  });
+  if(!r.ok){ const t=await r.text(); throw new Error(`HTTP ${r.status}: ${t}`); }
+  return r.json();
+}
+async function fbDelete(fbKey){
+  const r = await fetch(dbUrl('/'+fbKey), {method:'DELETE'});
+  if(!r.ok){ const t=await r.text(); throw new Error(`HTTP ${r.status}: ${t}`); }
+}
+async function fbDeleteAll(){
+  const r = await fetch(dbUrl(), {method:'DELETE'});
+  if(!r.ok){ const t=await r.text(); throw new Error(`HTTP ${r.status}: ${t}`); }
+}
+
+// ── 同步：polling 每5秒 + SSE 即時推送 ──
+let pollTimer = null;
+
+function startRealtimeSync(){
+  if(unsubscribe){ unsubscribe(); }
+  if(pollTimer){ clearInterval(pollTimer); }
+  setConn('ok');
+  document.getElementById('sync-badge').style.display='inline-flex';
+  document.getElementById('sync-badge2').style.display='inline-flex';
+
+  loadOnce();
+  pollTimer = setInterval(()=>loadOnce(true), 5000);
+
+  try{
+    const es = new EventSource(`${FB_URL}/expenses.json`);
+    es.addEventListener('put', e=>{
+      try{
+        const data=JSON.parse(e.data);
+        if(data.data===null){ records=[]; }
+        else{ records=Object.entries(data.data||{}).map(([k,v])=>({...v,_fbKey:k})); }
+        records.sort((a,b)=>Number(a.id)-Number(b.id));
+        renderRecords(); updateStats();
+      }catch(err){}
+    });
+    es.addEventListener('patch', e=>{
+      try{
+        const data=JSON.parse(e.data);
+        Object.entries(data.data||{}).forEach(([k,v])=>{
+          if(v===null){ records=records.filter(r=>r._fbKey!==k); }
+          else{ const idx=records.findIndex(r=>r._fbKey===k); idx>=0?records[idx]={...v,_fbKey:k}:records.push({...v,_fbKey:k}); }
+        });
+        records.sort((a,b)=>Number(a.id)-Number(b.id));
+        renderRecords(); updateStats();
+      }catch(err){}
+    });
+    es.onerror=()=>{};
+    unsubscribe=()=>{ es.close(); clearInterval(pollTimer); };
+  }catch(e){
+    unsubscribe=()=>clearInterval(pollTimer);
+  }
+}
+
+async function loadOnce(silent=false){
+  try{
+    const data=await fbGet();
+    if(data && typeof data==='object' && !data.error){
+      records=Object.entries(data).map(([k,v])=>({...v,_fbKey:k}));
+    } else {
+      records=[];
+    }
+    records.sort((a,b)=>Number(a.id)-Number(b.id));
+    renderRecords(); updateStats(); setConn('ok');
+  }catch(e){
+    if(!silent){
+      setConn('err');
+      const msg = e.message||'';
+      if(msg.includes('401')||msg.includes('403')){
+        toast('❌ 權限不足：請至 Firebase Console → Realtime Database → 規則，將讀寫改為 true');
+      } else if(msg.includes('404')){
+        toast('❌ 找不到資料庫：請確認網址格式（https://xxx-default-rtdb.firebaseio.com）');
+      } else {
+        toast('❌ 連線失敗：'+msg);
+      }
+    }
+  }
+}
+
+async function addRecord(){
+  if(!FB_URL){ toast('請先設定 Firebase 網址'); return; }
+  const payerId=parseInt(document.getElementById('payer').value);
+  const itemName=document.getElementById('item-name').value.trim();
+  const amount=parseFloat(document.getElementById('amount').value);
+  if(!payerId){ toast('請選擇付款人員'); return; }
+  if(!itemName){ toast('請輸入品項名稱'); return; }
+  if(!amount||amount<=0){ toast('請輸入有效金額'); return; }
+  if(!selected.size){ toast('請至少選擇一位分擔人員'); return; }
+
+  const payer=MEMBERS.find(m=>m.id===payerId);
+  const membersArr=[...selected].map(Number);
+  const rec={ id:Date.now(), payerId:Number(payerId), payerName:payer.name, itemName, amount:Number(amount),
+    members:membersArr, memberNames:membersArr.map(id=>MEMBERS.find(m=>m.id===id)?.name).join(','),
+    time:new Date().toLocaleString('zh-TW',{hour12:false}) };
+
+  const btn=document.getElementById('submit-btn');
+  btn.disabled=true; btn.textContent='存入中…';
+  try{
+    const res = await fbPost(rec);
+    // 立即更新本地，不等 polling
+    rec._fbKey = res.name;
+    records.push(rec);
+    document.getElementById('item-name').value='';
+    document.getElementById('amount').value='';
+    selectAll();
+    renderRecords(); updateStats();
+    toast('✅ 已同步至 Firebase');
+    switchTab('records');
+  }catch(e){ toast('❌ 存入失敗'); setConn('err'); }
+  finally{ btn.disabled=false; btn.textContent='💾 存入記錄'; }
+}
+
+async function deleteRec(fbKey){
+  if(!confirm('確定刪除這筆記錄？')) return;
+  try{
+    await fbDelete(fbKey);
+    records = records.filter(r => r._fbKey !== fbKey);
+    renderRecords(); updateStats();
+    toast('已刪除');
+  }
+  catch(e){ toast('❌ 刪除失敗'); }
+}
+
+async function resetAll(){
+  if(!confirm('確定清除所有記錄？此動作無法還原！')) return;
+  try{
+    await fbDeleteAll(); records=[];
+    renderRecords(); updateStats();
+    document.getElementById('settle-content').innerHTML='';
+    toast('已清除所有記錄'); switchTab('add');
+  }catch(e){ toast('❌ 操作失敗'); }
+}
+
+function setConn(state){
+  const dot=document.getElementById('conn-dot'), lbl=document.getElementById('conn-label');
+  dot.className='conn-dot '+(state==='ok'?'ok':state==='err'?'err':'');
+  lbl.textContent=state==='ok'?'即時連線中':state==='err'?'連線失敗':'未連線';
+}
+
+function switchTab(t){
+  const keys=['add','records','settle'];
+  document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',keys[i]===t));
+  document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
+  document.getElementById('tab-'+t).classList.add('active');
+  if(t==='settle') renderSettle();
+}
+
+function renderMembersGrid(){
+  const g=document.getElementById('members-grid'); g.innerHTML='';
+  MEMBERS.forEach(m=>{
+    const c=document.createElement('div');
+    c.className='member-chip'+(selected.has(m.id)?' selected':'');
+    c.innerHTML=`<div class="av">${m.emoji}</div>${m.name}`;
+    c.onclick=()=>{ selected.has(m.id)?selected.delete(m.id):selected.add(m.id); c.classList.toggle('selected'); updatePreview(); };
+    g.appendChild(c);
+  });
+}
+function selectAll(){ MEMBERS.forEach(m=>selected.add(m.id)); renderMembersGrid(); updatePreview(); }
+function clearAll(){ selected.clear(); renderMembersGrid(); updatePreview(); }
+function updatePreview(){
+  const amt=parseFloat(document.getElementById('amount').value)||0, cnt=selected.size;
+  const el=document.getElementById('split-preview');
+  if(!cnt){ el.innerHTML='⚠️ 請至少選擇一位分擔人員'; return; }
+  el.innerHTML=`已選 <span>${cnt} 人</span>，每人應付 <span>NT$${Math.round(amt/cnt).toLocaleString()}</span>`;
+}
+
+// ── Firebase 回傳 array 會變成 {0:x,1:y} 物件，需正規化 ──
+function normalizeMembers(members){
+  if(!members) return [];
+  if(Array.isArray(members)) return members.map(Number);
+  if(typeof members==='object') return Object.values(members).map(Number);
+  return String(members).split(',').map(Number);
+}
+function normalizePayer(r){
+  // payerId 可能是數字或字串，統一轉數字
+  return Number(r.payerId);
+}
+
+function renderRecords(){
+  const list=document.getElementById('records-list');
+  document.getElementById('record-badge').textContent=`${records.length} 筆`;
+  if(!records.length){ list.innerHTML='<div class="empty-state"><div class="icon">🧾</div>尚無記錄，請先新增費用</div>'; return; }
+  list.innerHTML=[...records].reverse().map(r=>{
+    const pid=normalizePayer(r);
+    const payer=MEMBERS.find(m=>m.id===pid);
+    const mIds=normalizeMembers(r.members);
+    const names=mIds.map(id=>MEMBERS.find(m=>m.id===id)?.name).filter(Boolean).join('、');
+    const each=mIds.length>0?Math.round(Number(r.amount)/mIds.length):0;
+    return `<div class="record-item">
+      <div class="rec-av">${payer?.emoji||'?'}</div>
+      <div class="rec-info">
+        <div class="rec-title">${r.itemName||'（未命名）'}</div>
+        <div class="rec-meta">${payer?.name||r.payerName||'?'} 付款 · ${mIds.length} 人分擔（每人 NT$${each.toLocaleString()}）</div>
+        <div class="rec-meta" style="margin-top:3px;font-size:11px">${names}</div>
+      </div>
+      <div class="rec-amount">NT$${Number(r.amount).toLocaleString()}</div>
+      <button class="rec-del" onclick="deleteRec('${r._fbKey}')">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function updateStats(){
+  const total=records.reduce((s,r)=>s+Number(r.amount),0);
+  document.getElementById('stat-total').textContent='NT$'+total.toLocaleString();
+  document.getElementById('stat-count').textContent=records.length;
+  // 每人實際應付金額（依各筆費用分擔人數加權計算）
+  const owedMap={}; MEMBERS.forEach(m=>owedMap[m.id]=0);
+  records.forEach(r=>{
+    const mIds=normalizeMembers(r.members);
+    const sh=Number(r.amount)/(mIds.length||1);
+    mIds.forEach(id=>{ if(owedMap[id]!==undefined) owedMap[id]+=sh; });
+  });
+  // 平均每人 = 有分擔到費用的人的平均應付
+  const vals=Object.values(owedMap).filter(v=>v>0);
+  const avg=vals.length>0 ? vals.reduce((a,b)=>a+b,0)/vals.length : 0;
+  document.getElementById('stat-avg').textContent='NT$'+Math.round(avg).toLocaleString();
+}
+
+function calcTransactions(){
+  const paid={},owed={};
+  MEMBERS.forEach(m=>{paid[m.id]=0;owed[m.id]=0;});
+  records.forEach(r=>{
+    const pid=normalizePayer(r);
+    if(paid[pid]!==undefined) paid[pid]+=Number(r.amount);
+    const mIds=normalizeMembers(r.members);
+    const sh=Number(r.amount)/(mIds.length||1); mIds.forEach(id=>{ if(owed[id]!==undefined) owed[id]+=sh; });
+  });
+  const balance={}; MEMBERS.forEach(m=>balance[m.id]=Math.round((paid[m.id]-owed[m.id])*100)/100);
+  const creditors=[],debtors=[];
+  MEMBERS.forEach(m=>{ if(balance[m.id]>0.5) creditors.push({id:m.id,bal:balance[m.id]}); if(balance[m.id]<-0.5) debtors.push({id:m.id,bal:-balance[m.id]}); });
+  creditors.sort((a,b)=>b.bal-a.bal); debtors.sort((a,b)=>b.bal-a.bal);
+  const txns=[]; let i=0,j=0;
+  while(i<creditors.length&&j<debtors.length){
+    const amt=Math.min(creditors[i].bal,debtors[j].bal);
+    if(amt>0.5) txns.push({from:debtors[j].id,to:creditors[i].id,amount:Math.round(amt)});
+    creditors[i].bal-=amt; debtors[j].bal-=amt;
+    if(creditors[i].bal<0.5) i++; if(debtors[j].bal<0.5) j++;
+  }
+  return{txns,paid,owed};
+}
+
+function renderSettle(){
+  const el=document.getElementById('settle-content');
+  if(!records.length){ el.innerHTML='<div class="empty-state"><div class="icon">💸</div>尚無費用記錄</div>'; return; }
+  const{txns,paid,owed}=calcTransactions();
+  el.innerHTML=MEMBERS.map(m=>{
+    const myRecv=txns.filter(t=>Number(t.to)===m.id), myPay=txns.filter(t=>Number(t.from)===m.id);
+    const totalRecv=myRecv.reduce((s,t)=>s+t.amount,0), totalPay=myPay.reduce((s,t)=>s+t.amount,0);
+    let dirHTML;
+    if(!myRecv.length&&!myPay.length) dirHTML=`<span class="dir-even">✅ 帳目已平</span>`;
+    else if(myRecv.length&&!myPay.length) dirHTML=`<span class="dir-recv">應收</span>`;
+    else if(!myRecv.length&&myPay.length) dirHTML=`<span class="dir-pay">應付</span>`;
+    else dirHTML=`<span class="dir-recv">應收</span><span style="color:var(--text3);margin:0 4px">/</span><span class="dir-pay">應付</span>`;
+    const recvRows=myRecv.map(t=>{ const from=MEMBERS.find(x=>x.id===t.from); return `<div class="settle-txn-row"><span class="settle-txn-name">${from.emoji} ${from.name}</span><span class="txn-amt-recv">NT$${t.amount.toLocaleString()}</span><span class="settle-tag tag-recv">還款</span></div>`; }).join('');
+    const payRows=myPay.map(t=>{ const to=MEMBERS.find(x=>x.id===t.to); return `<div class="settle-txn-row"><span class="settle-txn-name">${to.emoji} ${to.name}</span><span class="txn-amt-pay">NT$${t.amount.toLocaleString()}</span><span class="settle-tag tag-pay">匯款</span></div>`; }).join('');
+    const footer=(myRecv.length||myPay.length)?`<div class="settle-footer">${totalRecv?`應收 <b style="color:var(--green)">NT$${totalRecv.toLocaleString()}</b>&nbsp;&nbsp;`:''}${totalPay?`應付 <b style="color:var(--accent)">NT$${totalPay.toLocaleString()}</b>`:''}</div>`:'';
+    return `<div class="settle-person"><div class="settle-head"><div style="font-size:22px">${m.emoji}</div><div class="settle-name">${m.name}</div>${dirHTML}</div>${recvRows}${payRows}${footer}</div>`;
+  }).join('');
+}
+
+let toastTimer;
+function toast(msg){ const el=document.getElementById('toast'); el.textContent=msg; el.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.classList.remove('show'),2800); }
+
+init();
+</script>
+</body>
+</html>
